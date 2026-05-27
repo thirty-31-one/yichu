@@ -1,0 +1,9 @@
+{
+  "name": "电子衣橱",
+  "short_name": "衣橱",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#f5f5f5",
+  "theme_color": "#FF6B6B",
+  "icons": []
+}

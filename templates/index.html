@@ -1,0 +1,607 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>电子衣橱</title>
+<link rel="manifest" href="/static/manifest.json">
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+:root {
+  --primary: #FF6B6B;
+  --bg: #f5f5f5;
+  --card: #fff;
+  --text: #333;
+  --text-light: #888;
+  --nav-h: 60px;
+  --header-h: 50px;
+}
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  padding-bottom: calc(var(--nav-h) + 20px);
+  padding-top: var(--header-h);
+  max-width: 500px;
+  margin: 0 auto;
+  min-height: 100vh;
+}
+
+/* Header */
+.header {
+  position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+  background: var(--primary); color: #fff;
+  height: var(--header-h); display: flex; align-items: center;
+  justify-content: center; font-size: 18px; font-weight: 700;
+  letter-spacing: 1px;
+}
+
+/* Bottom Nav */
+.nav {
+  position: fixed; bottom: 0; left: 0; right: 0; z-index: 100;
+  background: var(--card); display: flex;
+  height: var(--nav-h); border-top: 1px solid #eee;
+  box-shadow: 0 -2px 10px rgba(0,0,0,0.05);
+}
+.nav button {
+  flex: 1; border: none; background: none;
+  font-size: 11px; color: var(--text-light);
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  gap: 2px; cursor: pointer;
+}
+.nav button.active { color: var(--primary); }
+.nav button svg { width: 24px; height: 24px; }
+
+/* Pages */
+.page { display: none; padding: 12px; }
+.page.active { display: block; }
+
+/* Cards */
+.card-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+.card {
+  background: var(--card); border-radius: 12px; overflow: hidden;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+}
+.card img { width: 100%; aspect-ratio: 3/4; object-fit: cover; }
+.card .info { padding: 8px; font-size: 12px; }
+.card .info .name { font-weight: 600; margin-bottom: 2px; }
+.card .info .meta { color: var(--text-light); font-size: 10px; }
+.card .del {
+  display: block; width: 100%; border: none; background: #fff0f0;
+  color: #e74c3c; padding: 6px; font-size: 12px; cursor: pointer;
+}
+
+/* Filter chips */
+.chips { display: flex; gap: 8px; overflow-x: auto; padding: 8px 0; }
+.chip {
+  padding: 6px 14px; border-radius: 20px; border: 1px solid #ddd;
+  background: var(--card); font-size: 13px; white-space: nowrap;
+  cursor: pointer;
+}
+.chip.active { background: var(--primary); color: #fff; border-color: var(--primary); }
+
+/* FAB */
+.fab {
+  position: fixed; bottom: calc(var(--nav-h) + 20px); right: 20px; z-index: 99;
+  width: 52px; height: 52px; border-radius: 50%; border: none;
+  background: var(--primary); color: #fff; font-size: 28px;
+  box-shadow: 0 4px 12px rgba(255,107,107,0.4);
+  cursor: pointer; display: flex; align-items: center; justify-content: center;
+}
+
+/* Modal */
+.modal-overlay {
+  display: none; position: fixed; inset: 0; z-index: 200;
+  background: rgba(0,0,0,0.5); align-items: flex-end; justify-content: center;
+}
+.modal-overlay.show { display: flex; }
+.modal {
+  background: var(--card); border-radius: 20px 20px 0 0;
+  width: 100%; max-width: 500px; max-height: 85vh;
+  overflow-y: auto; padding: 20px;
+}
+.modal h3 { margin-bottom: 16px; font-size: 18px; }
+.modal input, .modal select {
+  width: 100%; padding: 12px; margin-bottom: 12px;
+  border: 1px solid #ddd; border-radius: 10px; font-size: 15px;
+}
+.modal .btn-primary {
+  width: 100%; padding: 14px; border: none; border-radius: 12px;
+  background: var(--primary); color: #fff; font-size: 16px;
+  font-weight: 600; cursor: pointer;
+}
+.modal .btn-secondary {
+  width: 100%; padding: 12px; border: none; background: none;
+  color: var(--text-light); font-size: 14px; cursor: pointer; margin-top: 8px;
+}
+.modal .file-area {
+  border: 2px dashed #ddd; border-radius: 12px; padding: 30px;
+  text-align: center; margin-bottom: 12px; cursor: pointer;
+  color: var(--text-light);
+}
+
+/* Outfit builder */
+.outfit-row {
+  display: flex; gap: 10px; padding: 10px; overflow-x: auto;
+  background: var(--card); border-radius: 12px; margin-bottom: 10px;
+}
+.outfit-slot {
+  min-width: 80px; text-align: center;
+  border: 2px dashed #ddd; border-radius: 10px; padding: 10px;
+  cursor: pointer;
+}
+.outfit-slot.filled { border-color: var(--primary); border-style: solid; }
+.outfit-slot img { width: 60px; height: 80px; object-fit: cover; border-radius: 6px; }
+.outfit-slot .label { font-size: 11px; color: var(--text-light); margin-top: 4px; }
+
+/* Preview strip */
+.preview-strip { text-align: center; margin: 16px 0; }
+.preview-strip img { max-width: 100%; max-height: 400px; border-radius: 12px; }
+
+/* Spinner */
+.spinner {
+  display: inline-block; width: 20px; height: 20px;
+  border: 3px solid #ddd; border-top-color: var(--primary);
+  border-radius: 50%; animation: spin 0.8s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* Toast */
+.toast {
+  position: fixed; top: 60px; left: 50%; transform: translateX(-50%);
+  background: #333; color: #fff; padding: 12px 24px;
+  border-radius: 20px; font-size: 14px; z-index: 300;
+  animation: fadeOut 2s forwards;
+}
+@keyframes fadeOut {
+  0% { opacity: 1; }
+  70% { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+/* Empty state */
+.empty { text-align: center; padding: 60px 20px; color: var(--text-light); }
+.empty svg { width: 64px; height: 64px; margin-bottom: 16px; opacity: 0.3; }
+</style>
+</head>
+<body>
+
+<div class="header">电子衣橱</div>
+
+<!-- Page 0: Wardrobe -->
+<div class="page active" id="page-wardrobe">
+  <div class="chips" id="filter-chips"></div>
+  <div class="card-grid" id="wardrobe-grid"></div>
+  <div class="empty" id="wardrobe-empty">
+    <svg viewBox="0 0 24 24" fill="currentColor"><path d="M20 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 14H4V6h16v12zM4 0h16v2H4zm0 22h16v2H4zm8-10c1.38 0 2.5-1.12 2.5-2.5S13.38 7 12 7s-2.5 1.12-2.5 2.5S10.62 12 12 12z"/></svg>
+    <p>还没有衣物，点击右下角 + 添加</p>
+  </div>
+</div>
+
+<!-- Page 1: Outfit Builder -->
+<div class="page" id="page-outfit">
+  <div style="margin-bottom:12px">
+    <select id="outfit-photo-pick" style="width:100%;padding:10px;border-radius:10px;border:1px solid #ddd;font-size:14px">
+      <option value="">选择全身照（可选）</option>
+    </select>
+  </div>
+  <div id="outfit-slots"></div>
+  <button class="btn-primary" id="btn-tryon" style="display:none;margin-top:12px">AI 试穿</button>
+  <div id="tryon-result" style="margin-top:16px"></div>
+  <div style="margin-top:16px; display:flex; gap:8px">
+    <input id="outfit-name" placeholder="给这套穿搭取个名字" style="flex:1">
+    <button id="btn-save-outfit" class="btn-primary" style="width:auto;padding:12px 20px">保存穿搭</button>
+  </div>
+</div>
+
+<!-- Page 2: History -->
+<div class="page" id="page-history">
+  <div id="history-list"></div>
+  <div class="empty" id="history-empty">
+    <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm-1-13h2v6l5.25 3.15-.75 1.23-4.5-2.67z"/></svg>
+    <p>还没有保存的穿搭</p>
+  </div>
+</div>
+
+<!-- Page 3: Photos -->
+<div class="page" id="page-photos">
+  <div class="card-grid" id="photos-grid"></div>
+  <div class="empty" id="photos-empty">
+    <svg viewBox="0 0 24 24" fill="currentColor"><path d="M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z"/></svg>
+    <p>还没有全身照</p>
+  </div>
+</div>
+
+<!-- FAB -->
+<button class="fab" id="fab">+</button>
+
+<!-- Upload Modal -->
+<div class="modal-overlay" id="upload-modal">
+  <div class="modal">
+    <h3 id="upload-title">添加衣物</h3>
+    <input id="upload-name" placeholder="名称，例如：白色T恤">
+    <select id="upload-category"></select>
+    <input id="upload-color" placeholder="颜色（可选）">
+    <select id="upload-season"><option>春夏</option><option>秋冬</option><option>全年</option></select>
+    <input type="file" id="upload-file" accept="image/*" style="display:none">
+    <div class="file-area" id="file-area">点击上传照片</div>
+    <img id="upload-preview" style="width:100%;max-height:200px;object-fit:contain;display:none;border-radius:8px;margin-bottom:12px">
+    <button class="btn-primary" id="btn-upload">保存</button>
+    <button class="btn-secondary" id="btn-cancel-upload">取消</button>
+  </div>
+</div>
+
+<!-- Photo Upload Modal -->
+<div class="modal-overlay" id="photo-modal">
+  <div class="modal">
+    <h3>上传全身照</h3>
+    <input id="photo-name" placeholder="照片名称">
+    <input type="file" id="photo-file" accept="image/*" style="display:none">
+    <div class="file-area" id="photo-file-area">点击选择照片</div>
+    <img id="photo-preview" style="width:100%;max-height:200px;object-fit:contain;display:none;border-radius:8px;margin-bottom:12px">
+    <button class="btn-primary" id="btn-photo-upload">上传</button>
+    <button class="btn-secondary" id="btn-cancel-photo">取消</button>
+  </div>
+</div>
+
+<!-- API Key Modal -->
+<div class="modal-overlay" id="config-modal">
+  <div class="modal">
+    <h3>AI 试穿设置</h3>
+    <input id="api-key-input" placeholder="火山引擎 API Key" type="password">
+    <button class="btn-primary" id="btn-save-config">保存</button>
+    <button class="btn-secondary" id="btn-cancel-config">取消</button>
+  </div>
+</div>
+
+<!-- Bottom Nav -->
+<nav class="nav">
+  <button class="active" data-page="0">
+    <svg viewBox="0 0 24 24" fill="currentColor"><path d="M20 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zM12 7c1.38 0 2.5 1.12 2.5 2.5S13.38 12 12 12s-2.5-1.12-2.5-2.5S10.62 7 12 7zM8 17c0-1.5 2-2 4-2s4 .5 4 2H8z"/></svg>
+    衣橱
+  </button>
+  <button data-page="1">
+    <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2L2 7v10c0 5.5 3.8 10 10 10s10-4.5 10-10V7L12 2zm4.5 9h-3v4h-3v-4h-3L12 6l4.5 5z"/></svg>
+    搭配
+  </button>
+  <button data-page="2">
+    <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 15l-4-4 1.41-1.41L11 14.17l5.59-5.59L18 10l-7 7z"/></svg>
+    记录
+  </button>
+  <button data-page="3">
+    <svg viewBox="0 0 24 24" fill="currentColor"><path d="M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z"/></svg>
+    照片
+  </button>
+  <button id="btn-settings" data-page="-1">
+    <svg viewBox="0 0 24 24" fill="currentColor"><path d="M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58c.18-.14.23-.41.12-.61l-1.92-3.32c-.12-.22-.37-.29-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54c-.04-.24-.24-.41-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.07.62-.07.94s.02.64.07.94l-2.03 1.58c-.18.14-.23.41-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z"/></svg>
+    设置
+  </button>
+</nav>
+
+<!-- Toast container -->
+<div id="toast-container"></div>
+
+<script>
+// ── State ──────────────────────────────────────────────
+const CATEGORIES = {{ categories|tojson }};
+const BODY_ORDER = ["帽子", "上衣", "内衣", "配饰", "裙子", "裤子", "鞋子"];
+let currentPage = 0;
+let currentFilter = "全部";
+let selectedItems = {};  // cat -> item for outfit
+
+// ── API helpers ────────────────────────────────────────
+async function api(url, opts = {}) {
+  const res = await fetch(url, opts);
+  return res.json();
+}
+
+function toast(msg) {
+  const t = document.createElement('div'); t.className = 'toast';
+  t.textContent = msg; document.getElementById('toast-container').appendChild(t);
+  setTimeout(() => t.remove(), 2000);
+}
+
+// ── Render ─────────────────────────────────────────────
+async function loadWardrobe() {
+  const items = await api('/api/items?category=' + encodeURIComponent(currentFilter));
+  const grid = document.getElementById('wardrobe-grid');
+  const empty = document.getElementById('wardrobe-empty');
+  if (items.length === 0) { grid.innerHTML = ''; empty.style.display = 'block'; return; }
+  empty.style.display = 'none';
+  grid.innerHTML = items.map(i => `
+    <div class="card">
+      <img src="/images/${i.image}" loading="lazy">
+      <div class="info">
+        <div class="name">${i.name}</div>
+        <div class="meta">${i.color||''} · ${i.category}</div>
+      </div>
+      <button class="del" data-id="${i.id}">删除</button>
+    </div>
+  `).join('');
+  grid.querySelectorAll('.del').forEach(b => b.onclick = async () => {
+    await api('/api/items/' + b.dataset.id, { method: 'DELETE' });
+    toast('已删除'); loadWardrobe(); loadOutfitPage();
+  });
+}
+
+function buildFilterChips() {
+  const chips = document.getElementById('filter-chips');
+  const cats = ['全部', ...CATEGORIES];
+  chips.innerHTML = cats.map(c => `<span class="chip${c===currentFilter?' active':''}" data-cat="${c}">${c}</span>`).join('');
+  chips.querySelectorAll('.chip').forEach(c => c.onclick = () => {
+    currentFilter = c.dataset.cat; buildFilterChips(); loadWardrobe();
+  });
+}
+
+async function loadOutfitPage() {
+  const [items, photos, config] = await Promise.all([
+    api('/api/items'), api('/api/photos'), api('/api/config')
+  ]);
+
+  // Photo picker
+  const pick = document.getElementById('outfit-photo-pick');
+  pick.innerHTML = '<option value="">选择全身照（可选）</option>' +
+    photos.map(p => `<option value="${p.id}">${p.name}</option>`).join('');
+
+  // Slots
+  const grouped = {};
+  items.forEach(i => { if (!grouped[i.category]) grouped[i.category] = []; grouped[i.category].push(i); });
+
+  const slots = document.getElementById('outfit-slots');
+  slots.innerHTML = BODY_ORDER.map(cat => {
+    const found = selectedItems[cat];
+    return `<div class="outfit-slot${found?' filled':''}" data-cat="${cat}">
+      ${found ? `<img src="/images/${found.image}"><div class="label">${found.name}</div>` : `<div class="label">${cat}</div>`}
+    </div>`;
+  }).join('');
+
+  // Slot click -> picker
+  slots.querySelectorAll('.outfit-slot').forEach(s => {
+    s.onclick = () => {
+      const cat = s.dataset.cat;
+      const opts = grouped[cat];
+      if (!opts || opts.length === 0) { toast('该分类没有衣物'); return; }
+      if (selectedItems[cat]) { delete selectedItems[cat]; loadOutfitPage(); return; }
+      if (opts.length === 1) { selectedItems[cat] = opts[0]; loadOutfitPage(); return; }
+      // Multiple: show tiny picker
+      const menu = document.createElement('div');
+      menu.style.cssText = 'position:fixed;inset:0;z-index:300;background:rgba(0,0,0,0.5);display:flex;align-items:flex-end;justify-content:center';
+      menu.innerHTML = `<div style="background:#fff;border-radius:20px 20px 0 0;width:100%;max-width:500px;max-height:70vh;overflow-y:auto;padding:16px">
+        <h4 style="margin-bottom:12px">选择${cat}</h4>
+        ${opts.map(o => `<div style="display:flex;align-items:center;gap:12px;padding:10px;border-radius:10px;cursor:pointer" class="pick-item" data-id="${o.id}">
+          <img src="/images/${o.image}" style="width:50px;height:65px;object-fit:cover;border-radius:8px">
+          <span>${o.name}</span>
+        </div>`).join('')}
+        <button style="width:100%;padding:12px;border:none;background:none;color:#888;margin-top:8px" onclick="this.parentElement.parentElement.remove()">取消</button>
+      </div>`;
+      document.body.appendChild(menu);
+      menu.querySelectorAll('.pick-item').forEach(el => {
+        el.onclick = () => {
+          const id = el.dataset.id;
+          const item = opts.find(o => o.id === id);
+          if (item) selectedItems[cat] = item;
+          menu.remove(); loadOutfitPage();
+        };
+      });
+      menu.onclick = e => { if (e.target === menu) menu.remove(); };
+    };
+  });
+
+  // Try-on button
+  const btn = document.getElementById('btn-tryon');
+  const photoId = pick.value;
+  const hasSelection = Object.keys(selectedItems).length >= 1;
+  btn.style.display = (photoId && hasSelection && config.api_key) ? 'block' : 'none';
+
+  pick.onchange = () => loadOutfitPage();
+}
+
+async function loadHistory() {
+  const outfits = await api('/api/outfits');
+  const list = document.getElementById('history-list');
+  const empty = document.getElementById('history-empty');
+  if (!outfits.length) { list.innerHTML = ''; empty.style.display = 'block'; return; }
+  empty.style.display = 'none';
+  list.innerHTML = outfits.map(o => `
+    <div style="background:#fff;border-radius:12px;padding:12px;margin-bottom:10px;box-shadow:0 1px 4px rgba(0,0,0,0.08)">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+        <strong>${o.name}</strong>
+        <span style="font-size:12px;color:#888">${o.created_at}</span>
+      </div>
+      <div style="display:flex;gap:8px;overflow-x:auto">
+        ${(o.items||[]).map(it => `<img src="/images/${it.image}" style="width:60px;height:80px;object-fit:cover;border-radius:8px" title="${it.name}">`).join('')}
+      </div>
+      <button class="del" data-id="${o.id}" style="margin-top:8px">删除</button>
+    </div>
+  `).join('');
+  list.querySelectorAll('.del').forEach(b => b.onclick = async () => {
+    await api('/api/outfits/' + b.dataset.id, { method: 'DELETE' });
+    toast('已删除'); loadHistory();
+  });
+}
+
+async function loadPhotos() {
+  const photos = await api('/api/photos');
+  const grid = document.getElementById('photos-grid');
+  const empty = document.getElementById('photos-empty');
+  if (!photos.length) { grid.innerHTML = ''; empty.style.display = 'block'; return; }
+  empty.style.display = 'none';
+  grid.innerHTML = photos.map(p => `
+    <div class="card">
+      <img src="/images/${p.image}" loading="lazy">
+      <div class="info"><div class="name">${p.name}</div></div>
+      <button class="del" data-id="${p.id}">删除</button>
+    </div>
+  `).join('');
+  grid.querySelectorAll('.del').forEach(b => b.onclick = async () => {
+    await api('/api/photos/' + b.dataset.id, { method: 'DELETE' });
+    toast('已删除'); loadPhotos(); loadOutfitPage();
+  });
+}
+
+// ── Page switching ─────────────────────────────────────
+function switchPage(idx) {
+  currentPage = idx;
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelector(`#page-${['wardrobe','outfit','history','photos'][idx]}`).classList.add('active');
+  document.querySelectorAll('.nav button').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll('.nav button')[idx].classList.add('active');
+  if (idx === 0) loadWardrobe();
+  if (idx === 1) loadOutfitPage();
+  if (idx === 2) loadHistory();
+  if (idx === 3) loadPhotos();
+  document.getElementById('fab').style.display = (idx === 0 || idx === 3) ? 'flex' : 'none';
+}
+
+document.querySelectorAll('.nav button').forEach(b => {
+  b.onclick = () => {
+    const page = parseInt(b.dataset.page);
+    if (page >= 0) switchPage(page);
+    else document.getElementById('config-modal').classList.add('show');
+  };
+});
+
+// ── FAB ────────────────────────────────────────────────
+document.getElementById('fab').onclick = () => {
+  if (currentPage === 0) openUploadModal();
+  else if (currentPage === 3) openPhotoModal();
+};
+
+// ── Upload modal ───────────────────────────────────────
+function openUploadModal() {
+  document.getElementById('upload-title').textContent = '添加衣物';
+  document.getElementById('upload-category').innerHTML = CATEGORIES.map(c => `<option>${c}</option>`).join('');
+  document.getElementById('upload-name').value = '';
+  document.getElementById('upload-color').value = '';
+  document.getElementById('upload-file').value = '';
+  document.getElementById('upload-preview').style.display = 'none';
+  document.getElementById('file-area').style.display = 'block';
+  document.getElementById('upload-modal').classList.add('show');
+}
+document.getElementById('btn-cancel-upload').onclick = () => document.getElementById('upload-modal').classList.remove('show');
+document.getElementById('file-area').onclick = () => document.getElementById('upload-file').click();
+document.getElementById('upload-file').onchange = function() {
+  if (this.files[0]) {
+    const reader = new FileReader();
+    reader.onload = e => {
+      document.getElementById('upload-preview').src = e.target.result;
+      document.getElementById('upload-preview').style.display = 'block';
+      document.getElementById('file-area').style.display = 'none';
+    };
+    reader.readAsDataURL(this.files[0]);
+  }
+};
+document.getElementById('btn-upload').onclick = async () => {
+  const form = new FormData();
+  form.append('name', document.getElementById('upload-name').value);
+  form.append('category', document.getElementById('upload-category').value);
+  form.append('color', document.getElementById('upload-color').value);
+  form.append('season', document.getElementById('upload-season').value);
+  const file = document.getElementById('upload-file').files[0];
+  if (!file || !form.get('name')) { toast('请填写名称并选择照片'); return; }
+  form.append('image', file);
+  await fetch('/api/items', { method: 'POST', body: form });
+  document.getElementById('upload-modal').classList.remove('show');
+  toast('已保存'); loadWardrobe(); loadOutfitPage();
+};
+
+// ── Photo modal ────────────────────────────────────────
+function openPhotoModal() {
+  document.getElementById('photo-name').value = '';
+  document.getElementById('photo-file').value = '';
+  document.getElementById('photo-preview').style.display = 'none';
+  document.getElementById('photo-file-area').style.display = 'block';
+  document.getElementById('photo-modal').classList.add('show');
+}
+document.getElementById('btn-cancel-photo').onclick = () => document.getElementById('photo-modal').classList.remove('show');
+document.getElementById('photo-file-area').onclick = () => document.getElementById('photo-file').click();
+document.getElementById('photo-file').onchange = function() {
+  if (this.files[0]) {
+    const reader = new FileReader();
+    reader.onload = e => {
+      document.getElementById('photo-preview').src = e.target.result;
+      document.getElementById('photo-preview').style.display = 'block';
+      document.getElementById('photo-file-area').style.display = 'none';
+    };
+    reader.readAsDataURL(this.files[0]);
+  }
+};
+document.getElementById('btn-photo-upload').onclick = async () => {
+  const form = new FormData();
+  form.append('name', document.getElementById('photo-name').value);
+  const file = document.getElementById('photo-file').files[0];
+  if (!file || !form.get('name')) { toast('请填写名称并选择照片'); return; }
+  form.append('image', file);
+  await fetch('/api/photos', { method: 'POST', body: form });
+  document.getElementById('photo-modal').classList.remove('show');
+  toast('已保存'); loadPhotos(); loadOutfitPage();
+};
+
+// ── Config modal ───────────────────────────────────────
+document.getElementById('btn-save-config').onclick = async () => {
+  const key = document.getElementById('api-key-input').value;
+  await fetch('/api/config', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({api_key: key}) });
+  document.getElementById('config-modal').classList.remove('show');
+  toast('API Key 已保存'); loadOutfitPage();
+};
+document.getElementById('btn-cancel-config').onclick = () => document.getElementById('config-modal').classList.remove('show');
+
+// ── AI Try-on ──────────────────────────────────────────
+document.getElementById('btn-tryon').onclick = async () => {
+  const photoId = document.getElementById('outfit-photo-pick').value;
+  const itemIds = Object.values(selectedItems).map(i => i.id);
+  if (!photoId || !itemIds.length) { toast('请选择全身照和衣物'); return; }
+  const config = await api('/api/config');
+  if (!config.api_key) { toast('请先在设置中填写API Key'); return; }
+
+  const btn = document.getElementById('btn-tryon');
+  btn.textContent = '⏳ 生成中...'; btn.disabled = true;
+
+  const res = await fetch('/api/tryon', {
+    method: 'POST',
+    headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({ api_key: config.api_key, photo_id: photoId, item_ids: itemIds }),
+  }).then(r => r.json());
+
+  btn.textContent = 'AI 试穿'; btn.disabled = false;
+
+  if (res.error) { toast(res.error); return; }
+  document.getElementById('tryon-result').innerHTML = `
+    <div class="preview-strip">
+      <img src="${res.url}" alt="试穿效果">
+      <p style="font-size:13px;color:#888;margin-top:8px">AI试穿效果</p>
+    </div>
+  `;
+  toast('生成成功！');
+};
+
+// ── Save outfit ────────────────────────────────────────
+document.getElementById('btn-save-outfit').onclick = async () => {
+  const name = document.getElementById('outfit-name').value;
+  const itemIds = Object.values(selectedItems).map(i => i.id);
+  if (!name) { toast('请输入穿搭名称'); return; }
+  if (!itemIds.length) { toast('请选择至少一件衣物'); return; }
+  await fetch('/api/outfits', {
+    method: 'POST',
+    headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({ name, items: itemIds }),
+  });
+  document.getElementById('outfit-name').value = '';
+  selectedItems = {};
+  toast('穿搭已保存'); loadOutfitPage(); loadHistory();
+};
+
+// ── Init ───────────────────────────────────────────────
+async function init() {
+  buildFilterChips();
+  loadWardrobe();
+  const config = await api('/api/config');
+  if (config.api_key) document.getElementById('api-key-input').value = config.api_key;
+}
+init();
+</script>
+</body>
+</html>
